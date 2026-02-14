@@ -1,0 +1,119 @@
+terminal LEVA_ZAGRADA, DESNA_ZAGRADA, ZAREZ, ID, DVE_TACKE
+terminal STRING_CONST, INT_CONST, DOUBLE_CONST, HEKSA_CONST
+
+class MObject {
+    public ArrayList<PairInfo> members;
+}
+
+class PairInfo {
+    public string name;
+    public Type type;
+    public MObject? mObject;
+    // Ovo stavljamo da samo za smenu "Pair -> ID : ID"
+    // Da bi kasnije vrlo lako mogli da proverimo da li PairInfo drzi neki drugi ID.
+    public string? anotherIdName;
+
+    public PairInfo(string name, Type type, MObject? mObject = null, string? anotherIdName = null) {
+        this.name = name;
+        this.type = type;
+        this.mObject = mObject;
+        this.anotherIdName = anotherIdName;
+    }
+}
+
+nonterminal ArrayList<PairInfo> Object
+nonterminal ArrayList<PairInfo> Members
+nonterminal PairInfo Pair
+
+Pair ::= ID:name DVE_TACKE INT_CONST:value
+    {:
+        var type = parse.symbolTable.getType("integer");
+        RESULT = new PairInfo(name, type)
+    :}
+    | ID:name DVE_TACKE DOUBLE_CONST:value
+    {:
+        var type = parse.symbolTable.getType("double");
+        RESULT = new PairInfo(name, type)
+    :}
+    | ID:name DVE_TACKE STRING_CONST:value
+    {:
+        var type = parse.symbolTable.getType("char");
+        RESULT = new PairInfo(name, type)
+    :}
+    // Ovo error pravilo vazi i za naredne smene, jer i one izgledaju isto.
+    | ID DVE_TACKE error
+    {:
+        print("Fali konstanta, objekat ili identifikator");
+    :}
+    // Takodje i ovo pravilo isto vazi za ostale definicije Pair-a
+    | ID error
+    {:
+        print("Fale dve tacke");
+    :};
+Pair ::= ID:name DVE_TACKE Object:imeObjekta
+    {:
+        var type = parse.symbolTable.getType("object");
+        MObject mObject = parser.symbolTable.getMObject(imeObjekta);
+        RESULT = new PairInfo(name, type, mObject)
+    :}
+Pair ::= ID:name DVE_TACKE ID:anotherName
+    {:
+        var type = parse.symbolTable.getType(anotherName);
+        // Ovde obelezimo da ovaj "PairInfo" zapravo drzi drugi identifikator
+        RESULT = new PairInfo(name, type, null, anotherName);
+    :}
+
+Members ::= Pair:val
+    {:
+        RESULT = new ArrayList<PairInfo>():
+        RESULT.add(val);
+    :}
+    | Members:list ZAREZ Pair:pairName
+    {:
+        PairInfo pair = parser.symbolTable.getPairInfo(pairName);
+
+        // 1) Svaki par moze da se javi samo jednom na jednom nivou ugnjezdenja
+        // Posto smo mi slojeve ugnjezdenja pravili kao listu custom objekata, pa novi objekat se direktno ubaci kao value
+        // onda samo treba da proverimo sve elementi liste, jer se u tom nivou ugnjezdenja nalazimo trenutno
+        for (PairInfo element : lista) {
+            if (element.name == pair.name) {
+                print("Takav identifikator vec postoji u ovom objektu");
+            }
+
+        }
+
+        // 2) Ako je "Pair:value" identifikator na drugi identifikator, onda taj drugi identifikator mora da postoji u listi.
+        if (pair.anotherIdName != null) {
+            var idVecPostoji = false;
+            for (PairInfo element : lista) {
+                if (value.anotherIdName == element.name) {
+                    idVecPostoji = true;
+                    break;
+                }
+            }
+
+            if (!idVecPostoji) {
+                print("Identifikator nije prethodno definisan u objektu");
+            }
+        }
+
+        list.add(value);
+        RESULT = list;
+    :}
+
+Object ::= LEVA_ZAGRADA Members:members DESNA_ZAGRADA
+    {:
+        RESULT = new MObject(members);
+    :}
+    | LEVA_ZAGRADA Members:members error
+    {:
+        print("Fali }");
+    :}
+    | LEVA_ZAGRADA error
+    {:
+        print("Fale Members");
+    :}
+    | error
+    {:
+        print("Fali cela definicija objekta");
+    :}

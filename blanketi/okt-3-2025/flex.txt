@@ -1,0 +1,32 @@
+import java_cup.runtime.*
+
+%%
+
+%class Lexer
+%cup
+%line
+%column
+
+%eofval{
+    return new Symbol(sym.EOF);
+%eofval}
+
+// Makroi
+slovo = [a-zA-Z]
+cifra = [0-9]
+
+%%
+
+[\t\r\n ]+ { ; }
+
+"(" { return new Symbol(sym.LEVA_ZAGRADA); }
+")" { return new Symbol(sym.DESNA_ZAGRADA); }
+"," { return new Symbol(sym.ZAREZ); }
+
+({slovo}|_)({slovo}|{cifra}|_)* { return new Symbol(sym.ID, yytext()); }
+
+[+-]?{cifra}+ { return new Symbol(sys.INT_CONST, Integer.parseInt(yytext())); }
+[+-]?{cifra}+\.{cifra}+([eE][+-]{cifra}+)? { return new Symbol(sys.FLOAT_CONST, Float.parseFloat(yytext)); }
+\"[^"]*\" { return new Symbol(sys.STRING_CONST, yytext().substring(1, yytext().length - 1)); }
+
+. { print("Greska" + yytext()); }

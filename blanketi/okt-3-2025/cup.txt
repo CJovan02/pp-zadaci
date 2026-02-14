@@ -1,0 +1,114 @@
+terminal ID, LEVA_ZAGRADA, DESNA_ZAGRADA, ZAREZ, EPSILON
+terminal STRING_CONST, INT_CONST, FLOAT_CONST
+
+class ExpressionInfo {
+    public Type tip;
+    public Object value;
+
+    public ExpressionInfo(Type tip, Object value) {
+        this.tip = tip;
+        this.value = value;
+    }
+}
+
+class FunctionDefinition {
+    public List<ExpressionInfo>? arguments;
+    public string name;
+
+    public FunctionDefinition(List<ExpressionInfo>? arguments, string name) {
+        this.arguments = arguments;
+        this.name = name;
+    }
+}
+
+nonterminal FunctionCall
+nonterminal ArrayList<ExpressionInfo>? Arguments
+nonterminal ArrayList<ExpressionInfo> ExpressionList
+nonterminal ExpressionInfo Expression
+
+FunctionCall ::= ID:imeFunkcije LEVA_ZAGRADA Arguments:args DESNA_ZAGRADA
+    {:
+        FunctionDefinition functionDefinition = parser.symbolTable.getFunction(imeFunkcije)
+
+        // 1) Funkcija mora da posoji u tabeli simbola
+        if (functionDefinition == null) {
+            print("Ne mozes da pozivas funkciju koja nije definisana");
+        }
+
+        // 2) broj argumenata mora da bude isti kao i u deklaraciji funkcije
+        if (functionDefinition.arguments.length != args.length) {
+            print("Broj argumenata u pozivu se ne poklapaju sa definicijom funkcije");
+        }
+
+        // 3) Tipovi parametara u pozivu treba da se slazu sa tipovima u deklaraciji funkcije
+        for (int i = 0; i < args.length; i++) {
+            var argPoziva = args[i];
+            var argDefinicije = functionDefinition.arguments[i];
+
+            if (argPoziva.tip.tkind != argDefinicije.type.tkind) {
+                print("Tip u pozivu se razlikuje sa tipom u definiciji");
+            }
+        }
+
+    :}
+    | ID LEVA_ZAGRADA Arguments error
+    {:
+        print("fali )");
+    :}
+    | ID LEVA_ZAGRADA error
+    {:
+        print("fale argumenti");
+    :}
+    | ID error
+    {:
+        print("fali (");
+    :}
+    | error
+    {:
+        print("Fali poziv funkcije");
+    :}
+
+Arguments ::= ExpressionList:lista
+    {:
+        RESULT = lista;
+    :}
+    | EPSILON 
+    {:
+        RESULT = null;
+    :}
+
+ExpressionList ::= Expression:ex
+    {:
+        RESULT = new ArrayList<ExpressionInfo>();
+        RESULT.add(ex);
+    :}
+    | ExpressionList:lista ZAREZ Expression:ex
+    {:
+        lista.add(ex);
+        RESULT = lista;
+    :}
+    | ExpressionList ZAREZ error
+    {:
+        print("fali expression");
+    :}
+    | ExpressionList error
+    {:
+        print("fali zarez");
+    :}
+
+Expression ::= ID:id
+    {:
+        RESULT = new ExpressionInfo(parser.symbolTable.getType(id), id.value);
+    :}
+    | INT_CONST:vrednost
+    {:
+        RESULT = new ExpressionInfo(parser.symbolTable.getType("integer"), vrednost);
+    :}
+    | FLOAT_CONST:vr
+    {:
+        RESULT = new ExpressionInfo(parser.symbolTable.getType("float"), vr);
+    :}
+    | STRING_CONST:vr
+    {:
+        RESULT = new ExpressionInfo(parser.symbolTable.getType("chat"), vr);
+    :}

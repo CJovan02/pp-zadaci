@@ -1,0 +1,34 @@
+import java_cup.runtime.*
+
+%%
+
+%class Lexer
+%cup
+%line
+%column
+
+%eofval {
+    return new Symbol(sym.EOF);
+%eofval}
+
+slovo = [a-zA-z]
+cifra = [0-9]
+heksa = [0-9A-F]
+
+%%
+
+[\t\r\n ]+ { ; }
+
+"{" { return new Symbol(sym.LEVA_ZAGRADA); }
+"}" { return new Symbol(sym.DESNA_ZAGRADA); }
+"," { return new Symbol(sym.ZAREZ); }
+":" { return new Symbol(sym.DVE_TACKE); }
+
+[{slovo}_]({slovo}|{cifra}|_)* { return new Symbol(sym.ID, yytext()); }
+
+[+-]?{cifra}+                                 { return new Symbol(sym.INT_CONST, Integer.parseint(yytext())); }
+[+-]?0x{heksa}+                               { return new Symbol(sym.INT_CONST, Integer.decode(yytext())); }
+[+-]?{cifra}+\.{cifra}+[[eE][+-]?{cifra}+]?   { return new Symbol(sym.DOUBLE_INT, Double.parseDouble(yytext())); }
+\"[^"]*\"                                     { return new Symbol(sym.STRING_CONST, yytext().substring(1, yytext().length - 1)); }
+
+. { print("Error" + yytext()); }

@@ -1,0 +1,95 @@
+class PromenljivaInfo {
+    public String? ime;
+    public Type type;
+    public Object vrednost;
+
+    public PromenljivaInfo(Type type, Object vrednost, ime = null) {
+        this.ime = ime;
+        this.type = type;
+        this.vrednost = vrednost
+    }
+}
+
+terminal TACKA, LEVA_ZAGRADA, DESNA_ZAGRADA, ID
+terminal INT_CONST, DOUBLE_CONST, STRING_CONST
+
+nonterminal PromenljivaInfo Izraz
+nonterminal PromenljivaInfo Promenljiva
+
+// Nisam siguran da li treba da se pise error kada sa leve strane ima samo jedan simbol
+Izraz ::= Promenljiva:pr
+    {:
+        RESULT = pr
+    :}
+    | INT_CONST:vrednost
+    {:
+        RESULT = new PromenljivaInfo(parser.symbolTable.getType("integer"), vrednost)
+    :}
+    | DOUBLE_CONST:vrednost
+    {:
+        RESULT = new PromenljivaInfo(parser.symbolTable.getType("double"), vrednost)
+    :}
+    | STRING_CONST:vrednost
+    {:
+        RESULT = new PromenljivaInfo(parser.symbolTable.getType("char"), vrednost)
+    :}
+
+Promenljiva ::= ID:id
+    {:
+        Type type = parser.symbolTable.getVarType(id.toString())
+        RESULT = new PromenljivaInfo(type, null, id.toString())
+    :}
+    | ID:id TACKA:tacka Promenljiva:promenljiva
+    {:
+        // 1) Promenljiva mora da bude strukturnog tipa
+        if (promenljiva.type.tkind != parser.getSymbolTable.getTypes("struct").tkind) {
+            System.out.println("Promenljiva posle tacke mora da bude strukturnog tipa")
+        }
+
+        // 2) ID mora da bude ime nekog tipa koji je iste strukture kao i promenljiva
+        // nemam pojma kako se uzima vrednost koju identifikator predstavlja
+        // ovu funkciju sam izmislio
+        if (parser.findValueOfId(id).tkind != promenljiva.type.tkind) {
+            System.out.println("Identifikator mora da predstavlja vrednost koja je istog tipa kao promenljiva");
+        }
+
+        RESULT = new PromenljivaInfo(promenljiva.type, promenljiva.value, id.toString())
+    :}
+    | ID TACKA error
+    {:
+        print("Nije navedena promenljiva");
+    :}
+    | ID error // dva puta je ovo navedeno, vervatno ce imati konflikta ali nemam pojma kako drugacije
+    {:
+        print("Nije navedena tacka");
+    :}
+    | ID:id LEVA_ZAGRADA Izraz DESNA_ZAGRADA
+    {:
+        var arrayType = parser.symbolTable.getType("array");
+
+        // 3) Operator [] moze samo nad poljima da se koristi
+        if (parser.symbolTable.getType(id).tkind != arrayType.tkind) {
+            print("[] je primenljiv samo nad poljima")
+        }
+
+        // 4) Izraz mora da bude celobrojnog tipa
+        // Izraz je tipa "PromenljivaInfo" tako da mozemo direktno iz nje da uzmemo tip izraza
+        if (izraz.type.tkind != parser.symbolTable.getType("integer").tkind) {
+            print("Izraz izmedju [] mora biti celobrojnog tipa");
+        }
+
+        var vrednost = id.value[izraz]
+        RESULT = new PromenljivaInfo(arrayType, vrednost, id.toString())
+    :}
+    | ID LEVA_ZAGRADA Izraz error 
+    {:
+        print("Fali ]")
+    :}
+    | ID: LEVA_ZAGRADA error
+    {:
+        print("Fali izraz");
+    :}
+    | ID error // dva puta je ovo navedeno, vervatno ce imati konflikta ali nemam pojma kako drugacije
+    {:
+        print("Fali [");
+    :}
