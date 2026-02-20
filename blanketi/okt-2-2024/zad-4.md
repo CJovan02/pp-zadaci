@@ -86,7 +86,6 @@ caluclate_tasks:
     ; rez prethodne funkcije je u ECX
     ADD EAX, ECX
     MOV [EBP-4], EAX
-    JMP kraj
 
     drugi_if:
         ;if(t->next != 0)
